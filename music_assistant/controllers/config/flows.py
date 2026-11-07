@@ -23,6 +23,7 @@ from music_assistant_models.errors import (
     ActionUnavailable,
     InsufficientPermissions,
     SetupFailedError,
+    UnsupportedSystemError,
 )
 from music_assistant_models.setup_flow import SetupFlowStep
 
@@ -467,6 +468,9 @@ class SetupFlowMixin:
         except SetupFlowError as err:
             # the author did not catch a finish failure: end with the failure message
             session.publish_abort(err)
+        except UnsupportedSystemError as err:
+            # the provider can not run on this installation (e.g. missing app vars)
+            session.publish_abort(_as_setup_flow_error(err))
         except asyncio.CancelledError:
             # abort/replace/shutdown: the author's cleanup (finally blocks) has run;
             # the canceller publishes the ABORT step. Never swallow the cancellation.
@@ -526,12 +530,7 @@ class SetupFlowMixin:
                 session.context.domain, {}, setup_data=self._encrypt_values(values)
             )
         except Exception as err:
-            raise SetupFlowError(
-                str(err) or err.__class__.__name__,
-                translation_key=getattr(err, "translation_key", None),
-                translation_args=getattr(err, "translation_args", None),
-                translation_owner=getattr(err, "translation_owner", None),
-            ) from err
+            raise _as_setup_flow_error(err) from err
         session.finish_step_id = self._provider_finish_step_id(config.instance_id)
         return {"instance_id": config.instance_id}
 
@@ -831,3 +830,13 @@ class SetupFlowMixin:
                 self.mass.create_task(self._abort_flow(flow, "timed_out"))
         if self._setup_flows:
             self._schedule_flow_sweep()
+
+
+def _as_setup_flow_error(err: Exception) -> SetupFlowError:
+    """Return a SetupFlowError carrying the message and translation metadata of ``err``."""
+    return SetupFlowError(
+        str(err) or err.__class__.__name__,
+        translation_key=getattr(err, "translation_key", None),
+        translation_args=getattr(err, "translation_args", None),
+        translation_owner=getattr(err, "translation_owner", None),
+    )

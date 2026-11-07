@@ -38,6 +38,7 @@ from music_assistant_models.errors import (
     LoginFailed,
     PlayerUnavailableError,
     SetupFailedError,
+    UnsupportedSystemError,
 )
 from music_assistant_models.player import OutputProtocol
 from music_assistant_models.provider import ProviderManifest
@@ -600,6 +601,22 @@ async def test_uncaught_finish_error_localizes_abort(flow_mass: MusicAssistant) 
         assert serialized["reason"] == template.format(address)
         assert "reason_translation" not in serialized
         assert abort_step.reason == str(error)
+
+
+@pytest.mark.usefixtures("flow_events")
+async def test_unsupported_system_aborts_with_its_reason(flow_mass: MusicAssistant) -> None:
+    """A provider that can not run on this installation ends its flow with the localizable cause."""
+    error = UnsupportedSystemError("not provided", translation_key="app_var_missing")
+
+    async def run_setup(_session: SetupSession) -> None:
+        raise error
+
+    with _use_flow(flow_mass, run_setup):
+        step = await flow_mass.config.setup_provider(FAKE_DOMAIN)
+    assert step.type == FlowStepType.ABORT
+    assert step.reason == str(error)
+    assert step.reason_translation is not None
+    assert step.reason_translation.key == "app_var_missing"
 
 
 async def test_finish_failure_author_retry_loop(flow_mass: MusicAssistant) -> None:
@@ -2137,7 +2154,7 @@ async def test_spotify_flow_hosted_bounce_roundtrip(
     )
 
     monkeypatch.setattr(
-        "music_assistant.providers.spotify.setup_flow.app_var", lambda _key: "ma_client_id"
+        "music_assistant.providers.spotify.setup_flow.require_app_var", lambda _key: "ma_client_id"
     )
     # seed the lazy http_session backing field so the token exchange uses our stub
     monkeypatch.setattr(
@@ -2602,7 +2619,7 @@ async def test_spotify_flow_aborts_on_a_non_premium_account(
     from music_assistant.providers.spotify.setup_flow import run_setup  # noqa: PLC0415
 
     monkeypatch.setattr(
-        "music_assistant.providers.spotify.setup_flow.app_var", lambda _key: "ma_client_id"
+        "music_assistant.providers.spotify.setup_flow.require_app_var", lambda _key: "ma_client_id"
     )
     monkeypatch.setattr(
         flow_mass,
@@ -2648,7 +2665,7 @@ async def test_spotify_flow_rejects_playback_authorized_by_another_account(
     )
 
     monkeypatch.setattr(
-        "music_assistant.providers.spotify.setup_flow.app_var", lambda _key: "ma_client_id"
+        "music_assistant.providers.spotify.setup_flow.require_app_var", lambda _key: "ma_client_id"
     )
     monkeypatch.setattr(
         flow_mass,

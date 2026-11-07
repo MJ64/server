@@ -15,7 +15,7 @@ from music_assistant_models.config_entries import ConfigEntry, ConfigValueOption
 from music_assistant_models.enums import ConfigEntryType
 from music_assistant_models.errors import LoginFailed
 
-from music_assistant.helpers.app_vars import app_var
+from music_assistant.helpers.app_vars import require_app_var
 from music_assistant.helpers.json import json_loads
 from music_assistant.helpers.oauth import (
     HOSTED_CALLBACK_URL,
@@ -134,7 +134,7 @@ async def run_setup(session: SetupSession) -> None:
         # the global session always (re)authenticates: a refresh token cannot be reused across a
         # re-auth and secure values are never prefilled back into the flow
         token_result = await _pkce_authenticate(
-            session, app_var("spotify_client_id"), step_id="authenticate"
+            session, require_app_var("spotify_client_id"), step_id="authenticate"
         )
         setup_data[CONF_REFRESH_TOKEN_GLOBAL] = str(token_result["refresh_token"])
         # an account that cannot work is turned away before the playback authorization

@@ -9,9 +9,15 @@ from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
+from music_assistant_models.errors import UnsupportedSystemError
 
 from music_assistant.helpers import app_vars as app_vars_module
-from music_assistant.helpers.app_vars import APP_VAR_NAMES, app_var, has_bundled_app_vars
+from music_assistant.helpers.app_vars import (
+    APP_VAR_NAMES,
+    app_var,
+    has_bundled_app_vars,
+    require_app_var,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -56,6 +62,25 @@ def test_env_override_wins(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> N
     monkeypatch.setenv("MASS_APP_VARS_FILE", str(file))
     monkeypatch.setenv("MASS_APP_VAR_SPOTIFY_CLIENT_ID", "from_env")
     assert app_var("spotify_client_id") == "from_env"
+
+
+def test_require_app_var_returns_the_value(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A provided app var is returned as is."""
+    monkeypatch.setattr(app_vars_module, "_bundled", lambda: None)
+    monkeypatch.setenv("MASS_APP_VAR_SPOTIFY_CLIENT_ID", "from_env")
+    assert require_app_var("spotify_client_id") == "from_env"
+
+
+def test_require_app_var_raises_when_missing(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A missing app var fails as unsupported on this installation, with a translatable error."""
+    monkeypatch.delenv("MASS_APP_VAR_SPOTIFY_CLIENT_ID", raising=False)
+    monkeypatch.setattr(app_vars_module, "_bundled", lambda: None)
+    monkeypatch.setenv("MASS_APP_VARS_FILE", str(tmp_path / "does_not_exist.json"))
+    with pytest.raises(UnsupportedSystemError) as exc_info:
+        require_app_var("spotify_client_id")
+    assert exc_info.value.translation_key == "app_var_missing"
 
 
 def test_local_json_file_via_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:

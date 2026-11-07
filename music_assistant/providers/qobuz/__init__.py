@@ -57,7 +57,7 @@ from music_assistant.constants import (
     VARIOUS_ARTISTS_NAME,
 )
 from music_assistant.controllers.cache import use_cache
-from music_assistant.helpers.app_vars import app_var
+from music_assistant.helpers.app_vars import app_var, require_app_var
 from music_assistant.helpers.external_ids import (
     barcode_to_upc,
     is_valid_barcode,
@@ -170,6 +170,8 @@ async def setup(
     mass: MusicAssistant, manifest: ProviderManifest, config: ProviderConfig
 ) -> ProviderInstanceType:
     """Initialize provider(instance) with given configuration."""
+    require_app_var("qobuz_app_id")
+    require_app_var("qobuz_app_secret")
     return QobuzProvider(mass, manifest, config, SUPPORTED_FEATURES)
 
 

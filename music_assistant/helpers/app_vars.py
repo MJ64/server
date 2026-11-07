@@ -45,6 +45,8 @@ from functools import cache, lru_cache
 from importlib import resources
 from pathlib import Path
 
+from music_assistant_models.errors import UnsupportedSystemError
+
 # Canonical app var names. These are the keys of both the bundled secrets and a
 # maintainer-supplied app_vars.json. Adding a new key also requires its value in the private
 # appvars repo, so contact a core maintainer (see the module docstring).
@@ -87,6 +89,19 @@ def app_var(name: str) -> str:
     if name in local:
         return local[name]
     return ""
+
+
+def require_app_var(name: str) -> str:
+    """
+    Return the app variable for ``name``, failing when this installation does not provide it.
+
+    :param name: One of :data:`APP_VAR_NAMES`, e.g. ``"spotify_client_id"``.
+    :raises UnsupportedSystemError: When the app variable is not provisioned.
+    """
+    if value := app_var(name):
+        return value
+    msg = f"The {name} app variable is not provided by this installation"
+    raise UnsupportedSystemError(msg, translation_key="app_var_missing")
 
 
 def has_bundled_app_vars() -> bool:

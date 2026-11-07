@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Any, cast
 
 from music_assistant_models.errors import LoginFailed
 
-from music_assistant.helpers.app_vars import app_var
+from music_assistant.helpers.app_vars import require_app_var
 
 from .constants import AUTH_SCOPE, AUTH_URL, SESSIONS_URL
 
@@ -25,7 +25,7 @@ TOKEN_REFRESH_COOLDOWN = 30
 
 def _v2_client_credentials() -> tuple[str, str]:
     """Return the (client_id, client_secret) of the Tidal v2 (device) client."""
-    return app_var("tidal_client_id_v2"), app_var("tidal_client_secret_v2")
+    return require_app_var("tidal_client_id_v2"), require_app_var("tidal_client_secret_v2")
 
 
 async def _read_json(response: ClientResponse, context: str) -> dict[str, Any]:

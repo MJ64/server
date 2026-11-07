@@ -115,6 +115,7 @@ async def test_a_failing_lookup_keeps_the_stored_account_on_reconfigure(
     )
     monkeypatch.setattr(spotify_flow, "_setup_playback", mock.AsyncMock())
     monkeypatch.setattr(spotify_flow, "_discard_pairing_dir", mock.AsyncMock())
+    monkeypatch.setattr(spotify_flow, "require_app_var", lambda _name: "ma_client_id")
 
     await spotify_flow.run_setup(session)
 

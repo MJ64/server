@@ -5,7 +5,7 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 import pytest
-from music_assistant_models.errors import LoginFailed
+from music_assistant_models.errors import LoginFailed, UnsupportedSystemError
 
 from music_assistant.constants import ENCRYPT_SUFFIX
 from music_assistant.providers.spotify import setup
@@ -17,9 +17,25 @@ from music_assistant.providers.spotify.constants import (
 )
 
 
+@pytest.fixture(autouse=True)
+def _spotify_client_id(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Provide Music Assistant's Spotify client id app var."""
+    monkeypatch.setenv("MASS_APP_VAR_SPOTIFY_CLIENT_ID", "ma_client_id")
+
+
 def _fake_encrypt(value: str) -> str:
     """Mirror ConfigController.encrypt_string: prefix once, idempotent for encrypted values."""
     return value if value.startswith(ENCRYPT_SUFFIX) else ENCRYPT_SUFFIX + value
+
+
+async def test_setup_requires_the_client_id(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Without Music Assistant's client id the provider is incompatible, not awaiting re-auth."""
+    monkeypatch.setattr("music_assistant.helpers.app_vars.app_var", lambda _name: "")
+    config = MagicMock(instance_id="spotify--test")
+    config.get_value = MagicMock(return_value=None)
+    config.setup_data = {}
+    with pytest.raises(UnsupportedSystemError):
+        await setup(MagicMock(), MagicMock(), config)
 
 
 async def test_setup_migrates_legacy_global_token(monkeypatch: pytest.MonkeyPatch) -> None:

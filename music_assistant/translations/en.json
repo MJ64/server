@@ -286,6 +286,7 @@
   "common.config_entries.zeroconf_interfaces.options.default": "Default interface",
   "common.errors.action_unavailable": "This action is currently unavailable.",
   "common.errors.already_registered": "This item is already registered.",
+  "common.errors.app_var_missing": "Not available on this installation. This service needs credentials that are only included in the supported installation methods.",
   "common.errors.audio_error": "An error occurred while processing audio.",
   "common.errors.authentication_failed": "Authentication failed. The credentials are invalid.",
   "common.errors.authentication_required": "Authentication is required.",

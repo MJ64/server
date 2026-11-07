@@ -11,7 +11,7 @@ from music_assistant_models.enums import ConfigEntryType, ExternalID, ImageType,
 from music_assistant_models.media_items import MediaItemImage, MediaItemMetadata, UniqueList
 
 from music_assistant.controllers.cache import use_cache
-from music_assistant.helpers.app_vars import app_var
+from music_assistant.helpers.app_vars import app_var, require_app_var
 from music_assistant.helpers.throttle_retry import Throttler
 from music_assistant.models.metadata_provider import MetadataProvider
 
@@ -49,6 +49,7 @@ async def setup(
     mass: MusicAssistant, manifest: ProviderManifest, config: ProviderConfig
 ) -> ProviderInstanceType:
     """Initialize provider(instance) with given configuration."""
+    require_app_var("fanarttv_api_key")
     return FanartTvMetadataProvider(mass, manifest, config, SUPPORTED_FEATURES)
 
 

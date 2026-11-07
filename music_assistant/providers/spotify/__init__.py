@@ -8,6 +8,7 @@ from music_assistant_models.enums import ProviderFeature
 from music_assistant_models.errors import LoginFailed
 
 from music_assistant.constants import CONF_PROVIDERS
+from music_assistant.helpers.app_vars import require_app_var
 
 from .constants import (
     CONF_CLIENT_ID,
@@ -51,6 +52,7 @@ async def setup(
     mass: MusicAssistant, manifest: ProviderManifest, config: ProviderConfig
 ) -> ProviderInstanceType:
     """Initialize provider(instance) with given configuration."""
+    require_app_var("spotify_client_id")
     _migrate_legacy_token(mass, config)
     # a global refresh token lives in setup_data (new installs) or, for installs configured
     # before setup flows existed, in the legacy config values (read-through covers both)

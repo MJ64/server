@@ -1251,6 +1251,7 @@
     "guest_account_disabled": "Guest access is unavailable because the {0} account is disabled.",
     "already_registered": "This item is already registered.",
     "setup_failed": "Setup failed. Please check the configuration and try again.",
+    "app_var_missing": "Not available on this installation. This service needs credentials that are only included in the supported installation methods.",
     "login_failed": "Login failed. Please check your credentials and try again.",
     "audio_error": "An error occurred while processing audio.",
     "provider_stream_limit": "{0} has reached its limit of {1} simultaneous streams. Stop playback on another player and try again.",

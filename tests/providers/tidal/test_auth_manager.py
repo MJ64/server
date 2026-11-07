@@ -11,6 +11,13 @@ from music_assistant_models.errors import LoginFailed
 from music_assistant.providers.tidal.auth_manager import TidalAuthManager
 
 
+@pytest.fixture(autouse=True)
+def _tidal_client_credentials(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Provide the Tidal client credentials app vars."""
+    monkeypatch.setenv("MASS_APP_VAR_TIDAL_CLIENT_ID_V2", "client_id")
+    monkeypatch.setenv("MASS_APP_VAR_TIDAL_CLIENT_SECRET_V2", "client_secret")
+
+
 @pytest.fixture
 def http_session() -> AsyncMock:
     """Return a mock http session."""
@@ -116,7 +123,7 @@ async def test_refresh_token_cooldown(
     assert http_session.post.call_count == 1
 
 
-@patch("music_assistant.providers.tidal.auth_manager.app_var")
+@patch("music_assistant.providers.tidal.auth_manager.require_app_var")
 async def test_start_device_login(mock_app_var: Mock, http_session: AsyncMock) -> None:
     """start_device_login returns the device authorization response."""
     mock_app_var.side_effect = ["client_id", "client_secret"]
@@ -137,7 +144,7 @@ async def test_start_device_login(mock_app_var: Mock, http_session: AsyncMock) -
     assert device["userCode"] == "ABCDE"
 
 
-@patch("music_assistant.providers.tidal.auth_manager.app_var")
+@patch("music_assistant.providers.tidal.auth_manager.require_app_var")
 async def test_start_device_login_failure(mock_app_var: Mock, http_session: AsyncMock) -> None:
     """start_device_login raises when the client is rejected (e.g. wrong client type)."""
     mock_app_var.side_effect = ["client_id", "client_secret"]
@@ -150,7 +157,7 @@ async def test_start_device_login_failure(mock_app_var: Mock, http_session: Asyn
         await TidalAuthManager.start_device_login(http_session)
 
 
-@patch("music_assistant.providers.tidal.auth_manager.app_var")
+@patch("music_assistant.providers.tidal.auth_manager.require_app_var")
 async def test_start_device_login_non_json_body(
     mock_app_var: Mock, http_session: AsyncMock
 ) -> None:
@@ -165,7 +172,7 @@ async def test_start_device_login_non_json_body(
         await TidalAuthManager.start_device_login(http_session)
 
 
-@patch("music_assistant.providers.tidal.auth_manager.app_var")
+@patch("music_assistant.providers.tidal.auth_manager.require_app_var")
 async def test_poll_device_login_success(mock_app_var: Mock, http_session: AsyncMock) -> None:
     """poll_device_login returns auth data with user info and an absolute expiry."""
     mock_app_var.side_effect = ["client_id", "client_secret"]
@@ -192,7 +199,7 @@ async def test_poll_device_login_success(mock_app_var: Mock, http_session: Async
     assert result["expires_at"] > time.time()
 
 
-@patch("music_assistant.providers.tidal.auth_manager.app_var")
+@patch("music_assistant.providers.tidal.auth_manager.require_app_var")
 async def test_poll_device_login_waits_for_pending(
     mock_app_var: Mock, http_session: AsyncMock
 ) -> None:
@@ -223,7 +230,7 @@ async def test_poll_device_login_waits_for_pending(
     assert http_session.post.call_count == 2
 
 
-@patch("music_assistant.providers.tidal.auth_manager.app_var")
+@patch("music_assistant.providers.tidal.auth_manager.require_app_var")
 async def test_poll_device_login_terminal_error(
     mock_app_var: Mock, http_session: AsyncMock
 ) -> None:
@@ -260,7 +267,7 @@ async def test_finalize_login_sessions_error(http_session: AsyncMock) -> None:
 
 
 @patch("music_assistant.providers.tidal.auth_manager.asyncio.sleep")
-@patch("music_assistant.providers.tidal.auth_manager.app_var")
+@patch("music_assistant.providers.tidal.auth_manager.require_app_var")
 async def test_poll_device_login_expired_token_keeps_polling(
     mock_app_var: Mock, mock_sleep: AsyncMock, http_session: AsyncMock
 ) -> None:
@@ -294,7 +301,7 @@ async def test_poll_device_login_expired_token_keeps_polling(
 
 
 @patch("music_assistant.providers.tidal.auth_manager.asyncio.sleep")
-@patch("music_assistant.providers.tidal.auth_manager.app_var")
+@patch("music_assistant.providers.tidal.auth_manager.require_app_var")
 async def test_poll_device_login_survives_gateway_error(
     mock_app_var: Mock, mock_sleep: AsyncMock, http_session: AsyncMock
 ) -> None:
@@ -324,7 +331,7 @@ async def test_poll_device_login_survives_gateway_error(
 
 
 @patch("music_assistant.providers.tidal.auth_manager.asyncio.sleep")
-@patch("music_assistant.providers.tidal.auth_manager.app_var")
+@patch("music_assistant.providers.tidal.auth_manager.require_app_var")
 async def test_poll_device_login_slow_down(
     mock_app_var: Mock, mock_sleep: AsyncMock, http_session: AsyncMock
 ) -> None:

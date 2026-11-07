@@ -27,7 +27,7 @@ from music_assistant_models.media_items import (
 )
 
 from music_assistant.controllers.cache import use_cache
-from music_assistant.helpers.app_vars import app_var
+from music_assistant.helpers.app_vars import app_var, require_app_var
 from music_assistant.helpers.compare import compare_album_name, compare_strings
 from music_assistant.helpers.throttle_retry import Throttler
 from music_assistant.models.metadata_provider import MetadataProvider
@@ -107,6 +107,7 @@ async def setup(
     mass: MusicAssistant, manifest: ProviderManifest, config: ProviderConfig
 ) -> ProviderInstanceType:
     """Initialize provider(instance) with given configuration."""
+    require_app_var("theaudiodb_api_key")
     return AudioDbMetadataProvider(mass, manifest, config, SUPPORTED_FEATURES)
 
 

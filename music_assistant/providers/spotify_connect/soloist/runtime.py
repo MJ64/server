@@ -918,6 +918,7 @@ class SoloistClient:
             future = asyncio.get_running_loop().create_future()
             self._pending_results.setdefault(command, deque()).append(future)
         try:
+            self.logger.debug("[probe] send %s %s", command, json_dumps(fields))
             await ws.send_json({"type": "command", "command": command, **fields})
             if future is not None:
                 await asyncio.wait_for(future, timeout)
@@ -935,6 +936,7 @@ class SoloistClient:
         if not isinstance(payload, dict) or not isinstance(event_type := payload.get("type"), str):
             self.logger.debug("Ignoring websocket message without an event type: %s", raw)
             return
+        self.logger.debug("[probe] event %s", json_dumps(_probe_summary(payload)))
         data: SoloistEventData | None = None
         if (model := _EVENT_MODELS.get(event_type)) is not None:
             try:
@@ -1127,3 +1129,38 @@ def _parse_build_timestamp(version_output: str) -> float | None:
             parsed = parsed.replace(tzinfo=UTC)
         return parsed.timestamp()
     return None
+
+
+def _probe_entity(entity: Any) -> Any:
+    """Return an entity without its decorations, keeping name and duration."""
+    if not isinstance(entity, dict):
+        return entity
+    deco = entity.get("decorations") or {}
+    return {
+        "uri": entity.get("uri"),
+        "type": entity.get("entity_type"),
+        "name": (deco.get("identity") or {}).get("name"),
+        "ms": (deco.get("playback") or {}).get("duration_ms"),
+    }
+
+
+def _probe_summary(payload: dict[str, Any]) -> dict[str, Any]:
+    """Return an event payload with the bulky decorations stripped."""
+    out: dict[str, Any] = {}
+    for key, value in payload.items():
+        if key in ("item", "context"):
+            out[key] = _probe_entity(value)
+        elif key in ("previous", "upcoming") and isinstance(value, list):
+            out[key] = [
+                {
+                    "uid": e.get("uid"),
+                    "src": e.get("source"),
+                    "uri": (e.get("item") or {}).get("uri"),
+                }
+                for e in value
+            ]
+        elif key == "available_actions" and isinstance(value, dict):
+            out[key] = sorted(value)
+        else:
+            out[key] = value
+    return out

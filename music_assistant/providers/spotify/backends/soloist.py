@@ -174,6 +174,7 @@ _TAIL_PAD_GRACE_S: Final[float] = 1.0
 # exiting with a plain code 1 - its message is the only way to tell that case
 # apart from any other startup failure.
 _DATA_DIR_BUSY_MARKER: Final[str] = "another session is running"
+_PROBE_CROSSFADE_MS: Final[int] = 6000
 # A daemon that cannot log in advertises itself for pairing instead of failing,
 # and then sits there until the startup budget runs out. The engine reports no
 # other way that a stored session is gone.
@@ -637,7 +638,7 @@ class SoloistBackend(SpotifyPlaybackBackend):
         if not write_audio_prefs(
             self._data_dir,
             self.logger,
-            crossfade_ms=0,
+            crossfade_ms=_PROBE_CROSSFADE_MS,
             loudness_normalization=normalize,
             audio_quality=self._audio_quality,
         ):
@@ -645,6 +646,19 @@ class SoloistBackend(SpotifyPlaybackBackend):
             # audio; running the engine on settings that may say otherwise would
             # mean normalizing twice, or not at all
             raise AudioError("Spotify Soloist audio settings could not be applied")
+        # PROBE (never merge): drop the engine's crossfade migration marker so it
+        # migrates our crossfade pref again at startup
+        for prefs_file in (self._data_dir / "settings").glob("**/prefs"):
+            lines = prefs_file.read_text(encoding="utf-8").splitlines()
+            kept = [ln for ln in lines if not ln.startswith("audio.crossfade_migrated_to_ps=")]
+            self.logger.warning(
+                "PROBE crossfade_ms=%s marker %s in %s",
+                _PROBE_CROSSFADE_MS,
+                "dropped" if kept != lines else "absent",
+                prefs_file,
+            )
+            if kept != lines:
+                prefs_file.write_text("\n".join(kept) + "\n", encoding="utf-8")
 
     def _session_args(self) -> list[str]:
         """

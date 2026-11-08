@@ -240,10 +240,38 @@ class DLNAPlayer(Player):
         """Return all (provider/player specific) Config Entries for the given player (if any)."""
         return [*PLAYER_CONFIG_ENTRIES]
 
+    # LOCAL PATCH (2026-11-08, HA user): don't stop/pause foreign playback.
+    # After another source took over the renderer (e.g. Onkyo native TuneIn
+    # preset), MA keeps its session and a Stop/Pause from MA would stop that
+    # foreign playback. Re-read the device URI and skip the device command if it
+    # is not an MA stream. Lost on container re-creation (MA update/app restart).
+    async def _plays_foreign_uri(self) -> bool:
+        assert self.device is not None  # for type checking
+        try:
+            await self.device.async_update(do_ping=False)
+        except Exception as err:  # noqa: BLE001
+            self.logger.debug("LOCAL PATCH: refresh before stop failed: %s", err)
+        uri = self.device.current_track_uri or ""
+        if uri and not uri.startswith(self.mass.streams.base_url):
+            self.logger.info(
+                "LOCAL PATCH: not sending stop/pause to %s, it plays a foreign URI: %s",
+                self.display_name,
+                uri,
+            )
+            return True
+        return False
+
     # COMMANDS
     @catch_request_errors
     async def stop(self) -> None:
         """Send STOP command to given player."""
+        assert self.device is not None  # for type checking
+        if await self._plays_foreign_uri():
+            return
+        await self._device_stop()
+
+    async def _device_stop(self) -> None:
+        """Send STOP to the device unconditionally (original stop)."""
         assert self.device is not None  # for type checking
         if self.device.can_stop:
             await self.device.async_stop()
@@ -266,7 +294,7 @@ class DLNAPlayer(Player):
         assert self.device is not None  # for type checking
         # always clear queue (by sending stop) first
         if self.device.can_stop:
-            await self.stop()
+            await self._device_stop()
         url = await self.provider.mass.streams.resolve_stream_url(self.player_id, media)
         didl_metadata = create_didl_metadata(media, url)
         title = media.title or media.uri
@@ -307,11 +335,13 @@ class DLNAPlayer(Player):
     async def pause(self) -> None:
         """Send PAUSE command to given player."""
         assert self.device is not None  # for type checking
+        if await self._plays_foreign_uri():
+            return
 
         replace_pause_with_stop = self.get_config_value("replace_pause_with_stop", return_type=bool)
 
         if replace_pause_with_stop and self.device.can_stop:
-            await self.stop()
+            await self._device_stop()
             return
 
         if self.device.can_pause:

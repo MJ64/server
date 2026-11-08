@@ -25,6 +25,14 @@ from music_assistant.models.player import DeviceInfo, Player
 
 from .constants import COMMAND_REFRESH_DELAYS, PLAYER_CONFIG_ENTRIES
 
+# Takeover detection: when the renderer switches from an MA stream to a foreign URI
+# (e.g. a receiver's native internet radio preset), MA ends its own session.
+# No check within TAKEOVER_GRACE seconds after MA started playback (the device may
+# still report its previous URI), and the foreign URI must still be there after
+# TAKEOVER_CONFIRM_DELAY seconds.
+TAKEOVER_GRACE = 15
+TAKEOVER_CONFIRM_DELAY = 10
+
 if TYPE_CHECKING:
     from async_upnp_client.client import UpnpDevice, UpnpService, UpnpStateVariable
     from music_assistant_models.config_entries import ConfigEntry
@@ -100,6 +108,10 @@ class DLNAPlayer(Player):
 
         self._observed_playback_state: PlaybackState | None = None
         self._playing_since: float | None = None
+        # takeover detection state, see _check_takeover
+        self._ma_stream_on_device = False
+        self._last_play_media = 0.0
+        self._takeover_check_scheduled = False
 
         # Track BOOTID in SSDP advertisements for device changes
         self.bootid: int | None = None
@@ -172,6 +184,7 @@ class DLNAPlayer(Player):
         self._attr_playback_state = _playback_state
 
         _device_uri = self.device.current_track_uri or ""
+        self._check_takeover(_device_uri)
         try:
             media_title = self.device.media_title
             media_artist = self.device.media_artist
@@ -240,11 +253,64 @@ class DLNAPlayer(Player):
         """Return all (provider/player specific) Config Entries for the given player (if any)."""
         return [*PLAYER_CONFIG_ENTRIES]
 
-    # LOCAL PATCH (2026-11-08, HA user): don't stop/pause foreign playback.
-    # After another source took over the renderer (e.g. Onkyo native TuneIn
-    # preset), MA keeps its session and a Stop/Pause from MA would stop that
-    # foreign playback. Re-read the device URI and skip the device command if it
-    # is not an MA stream. Lost on container re-creation (MA update/app restart).
+    def _check_takeover(self, device_uri: str) -> None:
+        """Schedule a takeover check when the renderer left an MA stream for a foreign URI."""
+        if device_uri.startswith(self.mass.streams.base_url):
+            self._ma_stream_on_device = True
+            return
+        if (
+            not device_uri
+            or not self._ma_stream_on_device
+            or self._takeover_check_scheduled
+            or time.time() - self._last_play_media < TAKEOVER_GRACE
+        ):
+            return
+        self._takeover_check_scheduled = True
+        self.mass.call_later(
+            TAKEOVER_CONFIRM_DELAY,
+            self._confirm_takeover,
+            task_id=f"dlna_takeover_{self.player_id}",
+        )
+
+    async def _confirm_takeover(self) -> None:
+        """End the MA session if another source still plays on the renderer."""
+        self._takeover_check_scheduled = False
+        if self.device is None or not self._ma_stream_on_device:
+            return
+        if time.time() - self._last_play_media < TAKEOVER_GRACE:
+            return
+        try:
+            await self.device.async_update(do_ping=False)
+        except Exception as err:  # noqa: BLE001
+            self.logger.debug("Takeover check: refresh failed: %s", err)
+            return
+        uri = self.device.current_track_uri or ""
+        if not uri or uri.startswith(self.mass.streams.base_url):
+            return
+        if time.time() - self._last_play_media < TAKEOVER_GRACE:
+            return  # MA started playback while the device was being refreshed
+        self._ma_stream_on_device = False
+        owner_id = self.protocol_parent_id or self.player_id
+        if (owner := self.mass.players.get_player(owner_id)) is None:
+            return
+        queue = self.mass.players.get_active_queue(owner)
+        if queue is None or queue.state != PlaybackState.PLAYING:
+            return
+        self.logger.info(
+            "%s was taken over by another source (%s), ending the MA session",
+            self.display_name,
+            uri,
+        )
+        try:
+            # stop() below does not forward the Stop to the device (foreign URI)
+            await self.mass.players.cmd_stop(owner_id)
+        except Exception as err:  # noqa: BLE001
+            self.logger.warning("Takeover check: stopping %s failed: %s", owner_id, err)
+
+    # Don't stop/pause foreign playback: after another source took over the
+    # renderer (e.g. an Onkyo native TuneIn preset), a Stop/Pause from MA would stop
+    # that foreign playback. Re-read the device URI and skip the device command if
+    # it is not an MA stream.
     async def _plays_foreign_uri(self) -> bool:
         assert self.device is not None  # for type checking
         try:
@@ -292,6 +358,9 @@ class DLNAPlayer(Player):
     async def play_media(self, media: PlayerMedia) -> None:
         """Handle PLAY MEDIA on given player."""
         assert self.device is not None  # for type checking
+        self._last_play_media = time.time()
+        self._takeover_check_scheduled = False
+        self.mass.cancel_timer(f"dlna_takeover_{self.player_id}")
         # always clear queue (by sending stop) first
         if self.device.can_stop:
             await self._device_stop()

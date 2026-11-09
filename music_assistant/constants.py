@@ -168,6 +168,7 @@ WILDCARD_BIND_IPS: Final[tuple[str, ...]] = ("0.0.0.0", "::")  # noqa: S104 - th
 # Port used by the built-in Sendspin server (runs next to, not behind, the webserver)
 SENDSPIN_SERVER_PORT: Final[int] = 8927
 CONF_AUTO_PLAY: Final[str] = "auto_play"
+CONF_POWER_OFF_ON_STOP: Final[str] = "power_off_on_stop"
 CONF_PLAY_MEDIA_OVERRIDES_GROUP: Final[str] = "play_media_overrides_group"
 CONF_GROUP_MEMBERS: Final[str] = "group_members"
 CONF_DYNAMIC_GROUP_MEMBERS: Final[str] = "dynamic_members"
@@ -451,6 +452,15 @@ CONF_ENTRY_FLOW_MODE_SAMPLE_RATE = ConfigEntry(
 
 CONF_ENTRY_AUTO_PLAY = ConfigEntry(
     key=CONF_AUTO_PLAY,
+    type=ConfigEntryType.BOOLEAN,
+    default_value=False,
+    depends_on=CONF_POWER_CONTROL,
+    depends_on_value_not="none",
+    category="player_controls",
+)
+
+CONF_ENTRY_POWER_OFF_ON_STOP = ConfigEntry(
+    key=CONF_POWER_OFF_ON_STOP,
     type=ConfigEntryType.BOOLEAN,
     default_value=False,
     depends_on=CONF_POWER_CONTROL,

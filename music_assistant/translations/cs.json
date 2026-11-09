@@ -27,6 +27,8 @@
   "common.config_entries.announce_volume_strategy.options.relative": "Relativní nárůst objemu",
   "common.config_entries.auto_play.description": "Po zapnutí tohoto přehrávače automaticky spustit přehrávání (pokud jsou položky ve frontě).",
   "common.config_entries.auto_play.label": "Automatické přehrávání (obnovení po zapnutí)",
+  "common.config_entries.power_off_on_stop.description": "Při zastavení přehrávání tento přehrávač také vypnout pomocí ovládání napájení. Neprovede se, pokud zařízení již přehrává jiný zdroj.",
+  "common.config_entries.power_off_on_stop.label": "Vypnout při zastavení",
   "common.config_entries.crossfade_duration.description": "Doba prolínání mezi skladbami v sekundách (pokud je povoleno)",
   "common.config_entries.crossfade_duration.label": "Doba prolínání",
   "common.config_entries.default_enqueue_option_album.label": "Výchozí možnost fronty pro položky Alba.",

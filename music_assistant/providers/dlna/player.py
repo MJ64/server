@@ -112,6 +112,8 @@ class DLNAPlayer(Player):
         self._ma_stream_on_device = False
         self._last_play_media = 0.0
         self._takeover_check_scheduled = False
+        # set by stop(): True when the stop was not sent because of a foreign URI
+        self.stop_skipped_foreign = False
 
         # Track BOOTID in SSDP advertisements for device changes
         self.bootid: int | None = None
@@ -332,7 +334,8 @@ class DLNAPlayer(Player):
     async def stop(self) -> None:
         """Send STOP command to given player."""
         assert self.device is not None  # for type checking
-        if await self._plays_foreign_uri():
+        self.stop_skipped_foreign = await self._plays_foreign_uri()
+        if self.stop_skipped_foreign:
             return
         await self._device_stop()
 

@@ -97,6 +97,7 @@ from music_assistant.constants import (
     CONF_PLAYER_QUEUES,
     CONF_PLAYERS,
     CONF_POWER_CONTROL,
+    CONF_POWER_OFF_ON_STOP,
     CONF_PROTOCOL_PARENT_ID,
     CONF_REPORTED_MAC,
     CONF_VOLUME_CONTROL,
@@ -651,13 +652,57 @@ class PlayerController(AnnouncementsMixin, AudioSourceMixin, ProtocolLinkingMixi
         - player_id: player_id of the player to handle the command.
         """
         player = self._get_player_with_redirect(player_id)
+        power_off = self._wants_power_off_on_stop(player)
+        protocol_id = player.active_output_protocol
         async with self.get_player_lock(player.player_id, PlayerLockPurpose.PLAYBACK):
             # Redirect to queue controller if it is active (skip if already in queue command context)
             if active_queue := self.get_active_queue(player):
                 await self.mass.player_queues.stop(active_queue.queue_id)
+            else:
+                # Delegate to internal handler for actual implementation
+                await self._handle_cmd_stop(player.player_id)
+        if power_off:
+            await self._power_off_after_stop(player, protocol_id)
+
+    def _wants_power_off_on_stop(self, player: Player) -> bool:
+        """
+        Return if an explicit stop on this player should also power it off.
+
+        Only when the player opted in, has a power control, is powered and is
+        actually playing (or paused) - an idle player was already released by
+        whatever took over the device, so its stop must not cut the power.
+
+        :param player: The player the stop command is addressed to.
+        """
+        return bool(
+            player.config.get_value(CONF_POWER_OFF_ON_STOP, False)
+            and player.state.power_control != PLAYER_CONTROL_NONE
+            and player.state.powered
+            and player.state.playback_state in (PlaybackState.PLAYING, PlaybackState.PAUSED)
+        )
+
+    async def _power_off_after_stop(self, player: Player, protocol_id: str | None) -> None:
+        """
+        Power off the player after an explicit stop (power_off_on_stop).
+
+        Skipped when the output protocol player refused to stop because the
+        device plays another source (e.g. the DLNA foreign-URI guard).
+
+        :param player: The player that was stopped.
+        :param protocol_id: Output protocol that was active before the stop.
+        """
+        if protocol_id and protocol_id != "native":
+            protocol_player = self.get_player(protocol_id)
+            if protocol_player is not None and getattr(
+                protocol_player, "stop_skipped_foreign", False
+            ):
+                self.logger.info(
+                    "Not powering off %s after stop: the device plays another source",
+                    player.state.name,
+                )
                 return
-            # Delegate to internal handler for actual implementation
-            await self._handle_cmd_stop(player.player_id)
+        self.logger.info("Powering off %s after stop (power off on stop)", player.state.name)
+        await self._handle_cmd_power(player.player_id, False)
 
     @api_command("players/cmd/play", required_scope=Scope.PLAYERS_CONTROL)
     @handle_player_command

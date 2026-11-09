@@ -65,6 +65,8 @@
   "common.config_entries.auth_qr.label": "Login with QR code",
   "common.config_entries.auto_play.description": "When this player is turned ON, automatically start playing (if there are items in the queue).",
   "common.config_entries.auto_play.label": "Automatically play (resume on power on)",
+  "common.config_entries.power_off_on_stop.description": "When stopping playback of this player, also turn it OFF via its power control. Skipped when the device already plays another source.",
+  "common.config_entries.power_off_on_stop.label": "Power off on stop",
   "common.config_entries.bind_ip.description": "Start the stream server on this specific interface. \nUse 0.0.0.0 to bind to all interfaces (both IPv4 and IPv6), which is the default. \nThis is an advanced setting that should normally not be adjusted in regular setups.",
   "common.config_entries.bind_ip.label": "Bind to IP/interface",
   "common.config_entries.bind_port.description": "The TCP port to run the server. Make sure that this server can be reached on the given IP and TCP port by players on the local network.",

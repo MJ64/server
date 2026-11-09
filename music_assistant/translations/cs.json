@@ -29,6 +29,8 @@
   "common.config_entries.auto_play.label": "Automatické přehrávání (obnovení po zapnutí)",
   "common.config_entries.power_off_on_stop.description": "Při zastavení přehrávání tento přehrávač také vypnout pomocí ovládání napájení. Neprovede se, pokud zařízení již přehrává jiný zdroj.",
   "common.config_entries.power_off_on_stop.label": "Vypnout při zastavení",
+  "provider.dlna.config_entries.respect_other_sources.description": "Neposílat zařízení stop/pauzu, když přehrává jiný zdroj než Music Assistant (např. vlastní předvolby nebo vstupy), a ukončit relaci Music Assistantu, když zařízení převezme jiný zdroj. Vyžaduje zařízení, které hlásí adresu přehrávaného obsahu.",
+  "provider.dlna.config_entries.respect_other_sources.label": "Nechat zařízení hrát jiné zdroje",
   "common.config_entries.crossfade_duration.description": "Doba prolínání mezi skladbami v sekundách (pokud je povoleno)",
   "common.config_entries.crossfade_duration.label": "Doba prolínání",
   "common.config_entries.default_enqueue_option_album.label": "Výchozí možnost fronty pro položky Alba.",

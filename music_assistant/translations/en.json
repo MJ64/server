@@ -1394,6 +1394,8 @@
   "provider.digitally_incorporated.manifest.description": "Stream curated internet radio from DI.FM, RadioTunes, RockRadio, JazzRadio, ClassicalRadio, and ZenRadio.",
   "provider.dlna.config_entries.replace_pause_with_stop.description": "Forces Music Assistant to stop playback instead of pausing. Enable for some legacy streamers which are unable to pause/resume playback when streaming uPnP/DLNA.",
   "provider.dlna.config_entries.replace_pause_with_stop.label": "Replace Pause with Stop",
+  "provider.dlna.config_entries.respect_other_sources.description": "Do not send stop/pause to the device while it plays a source that is not Music Assistant (e.g. its own presets or inputs), and end the Music Assistant session when another source takes over the device. Requires a device that reports the URI it is playing.",
+  "provider.dlna.config_entries.respect_other_sources.label": "Leave other sources playing",
   "provider.dlna.manifest.description": "Stream music to supported UPnP/DLNA-compatible devices.",
   "provider.emby.config_entries.ip_address.description": "The url of the Emby server to connect to.",
   "provider.emby.config_entries.ip_address.label": "Server",

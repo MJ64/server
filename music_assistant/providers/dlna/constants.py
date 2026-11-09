@@ -9,6 +9,9 @@ from music_assistant.constants import CONF_ENTRY_FLOW_MODE, create_sample_rates_
 # read back once quickly and once more after the track had time to load.
 COMMAND_REFRESH_DELAYS = (1, 5)
 
+# leave foreign (non-MA) playback on the renderer alone and release MA on takeover
+CONF_RESPECT_OTHER_SOURCES = "respect_other_sources"
+
 PLAYER_CONFIG_ENTRIES = [
     # enable flow mode by default because
     # most dlna players do not support enqueueing
@@ -20,5 +23,12 @@ PLAYER_CONFIG_ENTRIES = [
         type=ConfigEntryType.BOOLEAN,
         default_value=False,
         advanced=True,
+    ),
+    # Opt-in: don't stop/pause a source the renderer plays on its own (presets, inputs)
+    # and end the MA session when such a source takes over the renderer.
+    ConfigEntry(
+        key=CONF_RESPECT_OTHER_SOURCES,
+        type=ConfigEntryType.BOOLEAN,
+        default_value=False,
     ),
 ]

@@ -23,7 +23,7 @@ from music_assistant.constants import VERBOSE_LOG_LEVEL
 from music_assistant.helpers.upnp import create_didl_metadata
 from music_assistant.models.player import DeviceInfo, Player
 
-from .constants import COMMAND_REFRESH_DELAYS, PLAYER_CONFIG_ENTRIES
+from .constants import COMMAND_REFRESH_DELAYS, CONF_RESPECT_OTHER_SOURCES, PLAYER_CONFIG_ENTRIES
 
 # Takeover detection: when the renderer switches from an MA stream to a foreign URI
 # (e.g. a receiver's native internet radio preset), MA ends its own session.
@@ -255,8 +255,14 @@ class DLNAPlayer(Player):
         """Return all (provider/player specific) Config Entries for the given player (if any)."""
         return [*PLAYER_CONFIG_ENTRIES]
 
+    def _respect_other_sources(self) -> bool:
+        """Return if foreign (non-MA) playback on the renderer must be left alone."""
+        return bool(self.get_config_value(CONF_RESPECT_OTHER_SOURCES, return_type=bool))
+
     def _check_takeover(self, device_uri: str) -> None:
         """Schedule a takeover check when the renderer left an MA stream for a foreign URI."""
+        if not self._respect_other_sources():
+            return
         if device_uri.startswith(self.mass.streams.base_url):
             self._ma_stream_on_device = True
             return
@@ -278,6 +284,8 @@ class DLNAPlayer(Player):
         """End the MA session if another source still plays on the renderer."""
         self._takeover_check_scheduled = False
         if self.device is None or not self._ma_stream_on_device:
+            return
+        if not self._respect_other_sources():
             return
         if time.time() - self._last_play_media < TAKEOVER_GRACE:
             return
@@ -315,6 +323,8 @@ class DLNAPlayer(Player):
     # it is not an MA stream.
     async def _plays_foreign_uri(self) -> bool:
         assert self.device is not None  # for type checking
+        if not self._respect_other_sources():
+            return False
         try:
             await self.device.async_update(do_ping=False)
         except Exception as err:  # noqa: BLE001
